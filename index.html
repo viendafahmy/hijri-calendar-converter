@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hijri–Gregorian Calendar Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --glass-bg: rgba(255,255,255,0.18);
+    --glass-bg-strong: rgba(255,255,255,0.28);
+    --glass-border: rgba(255,255,255,0.45);
+    --glass-shadow: 0 8px 32px rgba(40,70,50,0.14), 0 1.5px 8px rgba(40,70,50,0.08);
+    --glass-blur: blur(18px) saturate(1.6);
+    --accent: #3D6B52;
+    --accent-2: #8FAF7E;
+    --text-primary: #111c16;
+    --text-secondary: rgba(15,30,20,0.55);
+    --text-light: rgba(15,30,20,0.38);
+    --radius: 22px;
+    --radius-sm: 14px;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #dceade 0%, #f0ede4 40%, #d8e8dc 100%);
+    position: relative;
+    overflow-x: hidden;
+    padding: 2rem 1rem 3rem;
+  }
+
+  /* Ambient blobs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.45;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #9fbfa8 0%, transparent 70%);
+    top: -120px; left: -100px;
+    animation: drift1 12s ease-in-out infinite alternate;
+  }
+  body::after {
+    width: 420px; height: 420px;
+    background: radial-gradient(circle, #b5c9a4 0%, transparent 70%);
+    bottom: -80px; right: -80px;
+    animation: drift2 15s ease-in-out infinite alternate;
+  }
+  @keyframes drift1 { to { transform: translate(40px, 30px) scale(1.08); } }
+  @keyframes drift2 { to { transform: translate(-30px, -40px) scale(1.05); } }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.7s ease both;
+  }
+  .header-eyebrow {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+    opacity: 0.85;
+  }
+  .header h1 {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 2.1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+  .header h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  /* Glass card */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--glass-shadow);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    animation: fadeUp 0.7s ease both;
+  }
+  .glass-strong {
+    background: var(--glass-bg-strong);
+  }
+
+  /* Tab switcher */
+  .tab-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 50px;
+    padding: 4px;
+    margin-bottom: 1.25rem;
+    animation: fadeUp 0.5s ease both;
+  }
+  .tab-btn {
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    padding: 10px 14px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: rgba(255,255,255,0.72);
+    box-shadow: 0 2px 12px rgba(61,107,82,0.15);
+    color: var(--accent);
+  }
+
+  /* Input group */
+  .input-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 6px;
+  }
+  input[type="date"],
+  select,
+  input[type="number"] {
+    width: 100%;
+    padding: 12px 16px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    background: rgba(255,255,255,0.42);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input[type="date"]:focus,
+  select:focus,
+  input[type="number"]:focus {
+    background: rgba(255,255,255,0.65);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(61,107,82,0.12);
+  }
+  .input-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 110px;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .input-row-2 { grid-template-columns: 1fr 1fr; }
+
+  .convert-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--accent) 0%, #5a8f70 100%);
+    color: white;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(61,107,82,0.28);
+    margin-top: 4px;
+    letter-spacing: 0.01em;
+  }
+  .convert-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(61,107,82,0.36); }
+  .convert-btn:active { transform: scale(0.98); }
+
+  /* Result cards */
+  .result-section { animation: fadeUp 0.5s ease both; }
+
+  .big-date {
+    text-align: center;
+    padding: 1.5rem 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .big-date-weekday {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+  .big-date-main {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 2.2rem;
+    color: var(--text-primary);
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .big-date-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .metric {
+    background: rgba(255,255,255,0.32);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    backdrop-filter: blur(8px);
+  }
+  .metric-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .metric-value {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+  .metric-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.35);
+    font-size: 13px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key { color: var(--text-secondary); }
+  .detail-val {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 14px;
+  }
+
+  /* Islamic weekday note */
+  .note-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(61,107,82,0.10);
+    border: 1px solid rgba(61,107,82,0.25);
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: #2d5240;
+    margin-bottom: 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Hijri input specific */
+  .hijri-input-group { margin-bottom: 12px; }
+  .month-select-wrap { position: relative; }
+  .month-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* Historical years panel */
+  .history-panel { margin-bottom: 1rem; }
+  .history-title {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 10px;
+  }
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.35);
+    gap: 12px;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-hijri {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .history-greg {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+  }
+  .history-weekday {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 1px;
+  }
+  .history-friday { color: var(--accent); font-weight: 500; }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hidden { display: none; }
+
+  /* Test panel */
+  .test-panel {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 1rem;
+    font-size: 12px;
+    color: var(--text-secondary);
+    animation: fadeUp 0.9s ease both;
+  }
+  .test-panel-title {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 8px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .test-panel[open] .test-panel-title { margin-bottom: 8px; }
+  .test-panel summary::-webkit-details-marker { display: none; }
+  .test-case {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    font-size: 11px;
+  }
+  .test-case:last-child { border-bottom: none; }
+  .test-input { color: var(--text-secondary); font-family: monospace; }
+  .test-result { color: var(--accent); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-eyebrow">Islamic Calendar</div>
+    <h1>Hijri–Gregorian<br><em>Calendar Converter</em></h1>
+  </div>
+
+  <!-- Tab switcher -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('g2h')">Gregorian → Hijri</button>
+    <button class="tab-btn" onclick="switchTab('h2g')">Hijri → Gregorian</button>
+  </div>
+
+  <!-- ══════ TAB 1: Gregorian → Hijri ══════ -->
+  <div id="tab-g2h">
+    <div class="glass glass-strong">
+      <div class="input-label">Enter Gregorian date</div>
+      <input type="date" id="g2h-input" style="margin-bottom:12px">
+      <button class="convert-btn" onclick="convertG2H()">Convert to Hijri →</button>
+    </div>
+
+    <div id="g2h-result" class="hidden result-section">
+      <div class="glass big-date">
+        <div class="big-date-weekday" id="g2h-weekday-islamic">—</div>
+        <div class="big-date-main" id="g2h-formatted">—</div>
+        <div class="big-date-sub" id="g2h-gregorian-sub">—</div>
+      </div>
+      <div class="note-pill" id="g2h-islamic-day-note">—</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-label">Year</div>
+          <div class="metric-value" id="g2h-year">—</div>
+          <div class="metric-sub">Hijri (H)</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Month</div>
+          <div class="metric-value" id="g2h-month">—</div>
+          <div class="metric-sub" id="g2h-monthnum">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Day</div>
+          <div class="metric-value" id="g2h-day">—</div>
+          <div class="metric-sub">of the month</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Weekday</div>
+          <div class="metric-value" style="font-size:1.1rem" id="g2h-weekday">—</div>
+          <div class="metric-sub">Gregorian</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ TAB 2: Hijri → Gregorian ══════ -->
+  <div id="tab-h2g" class="hidden">
+    <div class="glass glass-strong">
+      <div class="input-label" style="margin-bottom:10px">Enter Hijri date</div>
+
+      <div class="input-row">
+        <div>
+          <div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">Day</div>
+          <input type="number" id="h2g-day" min="1" max="30" placeholder="1–30">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">Month</div>
+          <div class="month-select-wrap">
+            <select id="h2g-month">
+              <option value="1">Muharram</option>
+              <option value="2">Safar</option>
+              <option value="3">Rabi al-Awwal</option>
+              <option value="4">Rabi al-Thani</option>
+              <option value="5">Jumada al-Ula</option>
+              <option value="6">Jumada al-Akhirah</option>
+              <option value="7">Rajab</option>
+              <option value="8">Shaban</option>
+              <option value="9">Ramadan</option>
+              <option value="10">Shawwal</option>
+              <option value="11">Dhul Qadah</option>
+              <option value="12">Dhul Hijjah</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">Year (H)</div>
+          <input type="number" id="h2g-year" min="1300" max="1600" placeholder="e.g. 1446">
+        </div>
+      </div>
+
+      <button class="convert-btn" onclick="convertH2G()">Convert to Gregorian →</button>
+    </div>
+
+    <div id="h2g-result" class="hidden result-section">
+      <div class="glass big-date">
+        <div class="big-date-weekday" id="h2g-weekday-greg">—</div>
+        <div class="big-date-main" id="h2g-formatted">—</div>
+        <div class="big-date-sub" id="h2g-hijri-sub">—</div>
+      </div>
+      <div class="note-pill" id="h2g-islamic-day-note">—</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-label">Year</div>
+          <div class="metric-value" id="h2g-year-out">—</div>
+          <div class="metric-sub">Gregorian</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Month</div>
+          <div class="metric-value" id="h2g-month-out">—</div>
+          <div class="metric-sub" id="h2g-monthname-out">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Day</div>
+          <div class="metric-value" id="h2g-day-out">—</div>
+          <div class="metric-sub">of the month</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Weekday</div>
+          <div class="metric-value" style="font-size:1.1rem" id="h2g-weekday-out">—</div>
+          <div class="metric-sub">Gregorian</div>
+        </div>
+      </div>
+      <!-- Last 3 years panel -->
+      <div class="glass history-panel" id="h2g-history">
+        <div class="history-title">Same date · previous 3 Hijri years</div>
+        <div id="h2g-history-rows"></div>
+      </div>
+      <!-- Next 3 years panel -->
+      <div class="glass history-panel" id="h2g-future">
+        <div class="history-title">Same date · next 3 Hijri years</div>
+        <div id="h2g-future-rows"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════
+// CORE CONVERSION FUNCTIONS
+// ═══════════════════════════════════════
+
+const MONTHS = [
+  'Muharram','Safar','Rabi al-Awwal','Rabi al-Thani',
+  'Jumada al-Ula','Jumada al-Akhirah','Rajab','Shaban',
+  'Ramadan','Shawwal','Dhul Qadah','Dhul Hijjah'
+];
+
+// Islamic day names (the Islamic day starts at sunset of the previous evening)
+// Sunday evening = start of Yawm al-Ithnayn (Monday in Islamic reckoning)
+const ISLAMIC_DAYS = [
+  'Yawm al-Ahad',       // Sunday
+  'Yawm al-Ithnayn',    // Monday
+  'Yawm al-Thulatha',   // Tuesday
+  'Yawm al-Arbia',      // Wednesday
+  'Yawm al-Khamis',     // Thursday
+  'Yawm al-Jumuah',     // Friday — the blessed day
+  'Yawm al-Sabt',       // Saturday
+];
+
+// Convert any Gregorian date to Hijri using the Intl API (Umm al-Qura calendar)
+function gregorianToHijri(gDate) {
+  const fmt = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+    day: 'numeric', month: 'numeric', year: 'numeric', weekday: 'long'
+  });
+  const parts = fmt.formatToParts(
+    new Date(gDate.getFullYear(), gDate.getMonth(), gDate.getDate(), 12, 0, 0)
+  );
+  const hDay    = parseInt(parts.find(p => p.type === 'day').value);
+  const hMonth  = parseInt(parts.find(p => p.type === 'month').value);
+  const hYear   = parseInt(parts.find(p => p.type === 'year').value);
+  const weekday = parts.find(p => p.type === 'weekday').value;
+  // JS getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+  const islamicDay = ISLAMIC_DAYS[gDate.getDay()];
+  const isFriday = gDate.getDay() === 5;
+  return {
+    year: hYear, month: hMonth, day: hDay,
+    monthName: MONTHS[hMonth - 1],
+    weekday, islamicDay, isFriday,
+    formatted: hDay + ' ' + MONTHS[hMonth - 1] + ' ' + hYear + ' H'
+  };
+}
+
+// Convert Hijri to approximate Gregorian using Julian Day Number algorithm
+// Then verify + correct using the Intl API
+function hijriToGregorian(hYear, hMonth, hDay) {
+  // Julian Day Number from Hijri
+  const jd = Math.floor((11 * hYear + 3) / 30)
+    + 354 * hYear + 30 * hMonth
+    - Math.floor((hMonth - 1) / 2) + hDay + 1948440 - 385;
+
+  // Julian Day to Gregorian
+  const l  = jd + 68569;
+  const n  = Math.floor((4 * l) / 146097);
+  const l2 = l - Math.floor((146097 * n + 3) / 4);
+  const i  = Math.floor((4000 * (l2 + 1)) / 1461001);
+  const l3 = l2 - Math.floor((1461 * i) / 4) + 31;
+  const j  = Math.floor((80 * l3) / 2447);
+  const gDay   = l3 - Math.floor((2447 * j) / 80);
+  const l4     = Math.floor(j / 11);
+  const gMonth = j + 2 - 12 * l4;
+  const gYear  = 100 * (n - 49) + i + l4;
+
+  const candidate = new Date(gYear, gMonth - 1, gDay, 12, 0, 0);
+
+  // Verify with Intl API, search ±3 days for exact match
+  function getHijriNums(date) {
+    const fmt = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+      day: 'numeric', month: 'numeric', year: 'numeric'
+    });
+    const parts = fmt.formatToParts(
+      new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0)
+    );
+    return {
+      d: parseInt(parts.find(p => p.type === 'day').value),
+      m: parseInt(parts.find(p => p.type === 'month').value),
+      y: parseInt(parts.find(p => p.type === 'year').value)
+    };
+  }
+
+  for (let offset = -3; offset <= 3; offset++) {
+    const test = new Date(candidate.getTime() + offset * 86400000);
+    const h = getHijriNums(test);
+    if (h.d === hDay && h.m === hMonth && h.y === hYear) return test;
+  }
+  return candidate; // best estimate
+}
+
+function formatGregorian(date) {
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ═══════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'g2h') || (i === 1 && tab === 'h2g'));
+  });
+  document.getElementById('tab-g2h').classList.toggle('hidden', tab !== 'g2h');
+  document.getElementById('tab-h2g').classList.toggle('hidden', tab !== 'h2g');
+}
+
+// ═══════════════════════════════════════
+// GREGORIAN → HIJRI
+// ═══════════════════════════════════════
+
+function convertG2H() {
+  const input = document.getElementById('g2h-input').value;
+  if (!input) return;
+
+  const [y, m, d] = input.split('-').map(Number);
+  const gDate = new Date(y, m - 1, d, 12, 0, 0);
+  const h = gregorianToHijri(gDate);
+
+  const gregFormatted = gDate.toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  document.getElementById('g2h-formatted').textContent  = h.formatted;
+  document.getElementById('g2h-gregorian-sub').textContent = gregFormatted;
+  document.getElementById('g2h-weekday-islamic').textContent = h.islamicDay;
+  document.getElementById('g2h-year').textContent   = h.year;
+  document.getElementById('g2h-month').textContent  = h.monthName;
+  document.getElementById('g2h-monthnum').textContent = 'month ' + h.month + ' of 12';
+  document.getElementById('g2h-day').textContent    = h.day;
+  document.getElementById('g2h-weekday').textContent = h.weekday;
+
+  const fridayNote = h.isFriday
+    ? '🌟 Yawm al-Jumuah — the most blessed day of the week'
+    : h.islamicDay + ' · ' + h.weekday;
+  document.getElementById('g2h-islamic-day-note').textContent = fridayNote;
+
+  document.getElementById('g2h-result').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════
+// HIJRI → GREGORIAN
+// ═══════════════════════════════════════
+
+function convertH2G() {
+  const hDay   = parseInt(document.getElementById('h2g-day').value);
+  const hMonth = parseInt(document.getElementById('h2g-month').value);
+  const hYear  = parseInt(document.getElementById('h2g-year').value);
+
+  if (!hDay || !hMonth || !hYear) return;
+  if (hDay < 1 || hDay > 30) return;
+
+  const gDate = hijriToGregorian(hYear, hMonth, hDay);
+  const islamicDay = ISLAMIC_DAYS[gDate.getDay()];
+  const isFriday = gDate.getDay() === 5;
+
+  const gregFormatted = formatGregorian(gDate);
+  const weekday = gDate.toLocaleDateString('en-GB', { weekday: 'long' });
+  const hijriInput = hDay + ' ' + MONTHS[hMonth - 1] + ' ' + hYear + ' H';
+
+  document.getElementById('h2g-formatted').textContent    = gregFormatted;
+  document.getElementById('h2g-hijri-sub').textContent    = 'Converted from: ' + hijriInput;
+  document.getElementById('h2g-weekday-greg').textContent = islamicDay;
+  document.getElementById('h2g-year-out').textContent     = gDate.getFullYear();
+  document.getElementById('h2g-month-out').textContent    = gDate.getMonth() + 1;
+  document.getElementById('h2g-monthname-out').textContent = gDate.toLocaleDateString('en-GB', { month: 'long' });
+  document.getElementById('h2g-day-out').textContent      = gDate.getDate();
+  document.getElementById('h2g-weekday-out').textContent  = weekday;
+
+  const fridayNote = isFriday
+    ? '🌟 Yawm al-Jumuah — the most blessed day of the week'
+    : islamicDay + ' · ' + weekday;
+  document.getElementById('h2g-islamic-day-note').textContent = fridayNote;
+
+  // Build the last 3 years panel
+  const historyContainer = document.getElementById('h2g-history-rows');
+  historyContainer.innerHTML = '';
+
+  for (let i = 1; i <= 3; i++) {
+    const pastHYear = hYear - i;
+    const pastGDate = hijriToGregorian(pastHYear, hMonth, hDay);
+    const pastWeekday = pastGDate.toLocaleDateString('en-GB', { weekday: 'long' });
+    const pastGreg = formatGregorian(pastGDate);
+    const pastIsFriday = pastGDate.getDay() === 5;
+
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    row.innerHTML =
+      '<div class="history-hijri">' + hDay + ' ' + MONTHS[hMonth - 1] + ' ' + pastHYear + ' H</div>' +
+      '<div style="text-align:right">' +
+        '<div class="history-greg">' + pastGreg + '</div>' +
+        '<div class="history-weekday' + (pastIsFriday ? ' history-friday' : '') + '">' + pastWeekday + '</div>' +
+      '</div>';
+    historyContainer.appendChild(row);
+  }
+
+  // Build the next 3 years panel
+  // Same logic as past years, but counting forwards (i = 1, 2, 3)
+  const futureContainer = document.getElementById('h2g-future-rows');
+  futureContainer.innerHTML = '';
+
+  for (let i = 1; i <= 3; i++) {
+    const futureHYear = hYear + i;
+    const futureGDate = hijriToGregorian(futureHYear, hMonth, hDay);
+    const futureWeekday = futureGDate.toLocaleDateString('en-GB', { weekday: 'long' });
+    const futureGreg = formatGregorian(futureGDate);
+    const futureIsFriday = futureGDate.getDay() === 5;
+
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    row.innerHTML =
+      '<div class="history-hijri">' + hDay + ' ' + MONTHS[hMonth - 1] + ' ' + futureHYear + ' H</div>' +
+      '<div style="text-align:right">' +
+        '<div class="history-greg">' + futureGreg + '</div>' +
+        '<div class="history-weekday' + (futureIsFriday ? ' history-friday' : '') + '">' + futureWeekday + '</div>' +
+      '</div>';
+    futureContainer.appendChild(row);
+  }
+
+  document.getElementById('h2g-result').classList.remove('hidden');
+}
+
+// Enter key support
+document.getElementById('g2h-input').addEventListener('keydown', e => { if (e.key === 'Enter') convertG2H(); });
+document.getElementById('h2g-year').addEventListener('keydown', e => { if (e.key === 'Enter') convertH2G(); });
+</script>
+</body>
+</html>
